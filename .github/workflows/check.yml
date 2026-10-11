@@ -1,0 +1,24 @@
+name: pkg-checks
+on: workflow_dispatch
+permissions: { contents: read }
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy: { matrix: { mode: [registry, open] } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Restrict egress to npm registry
+        if: matrix.mode == 'registry'
+        run: |
+          ip=$(getent ahostsv4 registry.npmjs.org | awk '{print $1}' | sort -u)
+          sudo iptables -P OUTPUT DROP
+          sudo iptables -A OUTPUT -o lo -j ACCEPT
+          sudo iptables -A OUTPUT -p udp --dport 53 -j ACCEPT
+          for i in $ip; do sudo iptables -A OUTPUT -d $i -j ACCEPT; done
+      - name: Run checks
+        run: while read p; do timeout 300 ./check.sh "$p" "${{ matrix.mode }}" || true; done < packages.txt
+      - uses: actions/upload-artifact@v4
+        with: { name: results-${{ matrix.mode }}, path: results/ }

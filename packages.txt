@@ -1,0 +1,9 @@
+zod
+express
+chalk
+lodash
+better-sqlite3
+bcrypt
+canvas
+sharp
+esbuild
